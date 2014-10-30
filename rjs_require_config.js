@@ -55,6 +55,7 @@ var requirejs = {
         mediaOvelayDataInjector: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/media_overlay_data_injector',
         internalLinksSupport: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/internal_links_support',
         iframeLoader: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/iframe_loader',
+        pagination : 'epub-modules/epub-renderer/src/readium-shared-js/js/models/pagination',
         
 
         domReady : 'lib/domReady',
@@ -264,6 +265,11 @@ var requirejs = {
         currentPagesInfo: {
             deps: ['readiumSDK'],
             exports: 'currentPagesInfo'
+        },
+
+        pagination: {
+            deps: ['readiumSDK','readerView', 'currentPagesInfo'],
+            exports: 'pagination'
         },
 
         smilIterator: {

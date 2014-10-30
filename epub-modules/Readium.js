@@ -12,8 +12,8 @@
 //  prior written permission.
 
 
-define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 'readerView', 'epub-fetch', 'epub-model/package_document_parser', 'epub-fetch/iframe_zip_loader', 'URIjs'],
-    function (require, versionText, console_shim, $, _, readerView, PublicationFetcher, PackageParser, IframeZipLoader, URI) {
+define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 'readerView', 'epub-fetch', 'epub-model/package_document_parser', 'epub-fetch/iframe_zip_loader', 'URIjs', 'pagination'],
+    function (require, versionText, console_shim, $, _, readerView, PublicationFetcher, PackageParser, IframeZipLoader, URI, Pagination) {
 
     //hack to make URI object global for readers consumption.
     window.URI = URI;
@@ -69,6 +69,9 @@ define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 
                         openBookData.openPageRequest = openPageRequest;
                     }
                     self.reader.openBook(openBookData);
+
+                    var pagination = new ReadiumSDK.Models.Pagination();
+                    pagination.storeDefaultPagination(openBookData, readerOptions);
 
                     var options = {
                         packageDocumentUrl : _currentPublicationFetcher.getPackageUrl(),
