@@ -55,6 +55,7 @@ var requirejs = {
         mediaOvelayDataInjector: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/media_overlay_data_injector',
         internalLinksSupport: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/internal_links_support',
         iframeLoader: 'epub-modules/epub-renderer/src/readium-shared-js/js/views/iframe_loader',
+        pWorker : 'epub-modules/web-workers/DefaultPagination',
         
 
         domReady : 'lib/domReady',
@@ -67,6 +68,10 @@ var requirejs = {
         "rangy-position" : 'epub-modules/epub-renderer/src/readium-shared-js/lib/rangy/rangy-position',
         
         Readium: 'epub-modules/Readium'
+    },
+
+    config : {
+        'epub-modules/web-workers/PaginationWorker' : { 'pWorker' : 'out/pagination-worker.js' }
     },
 
     packages: [

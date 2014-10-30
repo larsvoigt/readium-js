@@ -11,93 +11,97 @@
 //  used to endorse or promote products derived from this software without specific 
 //  prior written permission.
 
+define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 'readerView', 'epub-fetch', 'epub-model/package_document_parser', 'epub-fetch/iframe_zip_loader', 'URIjs', 'epub-modules/web-workers/Pagination'],
+    function (require, versionText, console_shim, $, _, readerView, PublicationFetcher, PackageParser, IframeZipLoader, URI, PaginationWorker) {
 
-define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 'readerView', 'epub-fetch', 'epub-model/package_document_parser', 'epub-fetch/iframe_zip_loader', 'URIjs'],
-    function (require, versionText, console_shim, $, _, readerView, PublicationFetcher, PackageParser, IframeZipLoader, URI) {
+        //hack to make URI object global for readers consumption.
+        window.URI = URI;
 
-    //hack to make URI object global for readers consumption.
-    window.URI = URI;
-
-    //polyfill to support Safari 6
-    if ('URL' in window === false) {
-        if ('webkitURL' in window === false) {
-            throw Error('Browser does not support window.URL');
-        }
-
-        window.URL = window.webkitURL;
-    }
-
-    var Readium = function(readiumOptions, readerOptions){
-
-        var self = this;
-
-        var _currentPublicationFetcher;
-
-        var jsLibRoot = readiumOptions.jsLibRoot;
-
-        if (!readiumOptions.useSimpleLoader){
-            readerOptions.iframeLoader = new IframeZipLoader(ReadiumSDK, function() { return _currentPublicationFetcher; }, { mathJaxUrl: readerOptions.mathJaxUrl });;
-        }
-        else{
-            readerOptions.iframeLoader = new ReadiumSDK.Views.IFrameLoader();
-        }
-        
-
-        this.reader = new ReadiumSDK.Views.ReaderView(readerOptions);
-
-        this.openPackageDocument = function(bookRoot, callback, openPageRequest)  {
-            if (_currentPublicationFetcher) {
-                _currentPublicationFetcher.flushCache();
+        //polyfill to support Safari 6
+        if ('URL' in window === false) {
+            if ('webkitURL' in window === false) {
+                throw Error('Browser does not support window.URL');
             }
 
-            var cacheSizeEvictThreshold = null;
-            if (readiumOptions.cacheSizeEvictThreshold) {
-                cacheSizeEvictThreshold = readiumOptions.cacheSizeEvictThreshold;
+            window.URL = window.webkitURL;
+        }
+
+        var Readium = function (readiumOptions, readerOptions) {
+
+            var self = this;
+
+            var _currentPublicationFetcher;
+
+            var jsLibRoot = readiumOptions.jsLibRoot;
+
+            if (!readiumOptions.useSimpleLoader) {
+                readerOptions.iframeLoader = new IframeZipLoader(ReadiumSDK, function () {
+                    return _currentPublicationFetcher;
+                }, { mathJaxUrl: readerOptions.mathJaxUrl });
+                ;
+            }
+            else {
+                readerOptions.iframeLoader = new ReadiumSDK.Views.IFrameLoader();
             }
 
-            _currentPublicationFetcher = new PublicationFetcher(bookRoot, jsLibRoot, window, cacheSizeEvictThreshold);
 
-            _currentPublicationFetcher.initialize(function() {
+            this.reader = new ReadiumSDK.Views.ReaderView(readerOptions);
 
-                var _packageParser = new PackageParser(bookRoot, _currentPublicationFetcher);
+            this.openPackageDocument = function (bookRoot, callback, openPageRequest) {
+                if (_currentPublicationFetcher) {
+                    _currentPublicationFetcher.flushCache();
+                }
 
-                _packageParser.parse(function(packageDocument){
-                    var openBookOptions = readiumOptions.openBookOptions || {};
-                    var openBookData = $.extend(packageDocument.getSharedJsPackageData(), openBookOptions);
+                var cacheSizeEvictThreshold = null;
+                if (readiumOptions.cacheSizeEvictThreshold) {
+                    cacheSizeEvictThreshold = readiumOptions.cacheSizeEvictThreshold;
+                }
 
-                    if (openPageRequest) {
-                        openBookData.openPageRequest = openPageRequest;
-                    }
-                    self.reader.openBook(openBookData);
+                _currentPublicationFetcher = new PublicationFetcher(bookRoot, jsLibRoot, window, cacheSizeEvictThreshold);
 
-                    var options = {
-                        packageDocumentUrl : _currentPublicationFetcher.getPackageUrl(),
-                        metadata: packageDocument.getMetadata()
-                    };
+                _currentPublicationFetcher.initialize(function () {
 
-                    if (callback){
-                        // gives caller access to document metadata like the table of contents
-                        callback(packageDocument, options);
-                    }
+                    var _packageParser = new PackageParser(bookRoot, _currentPublicationFetcher);
+
+                    _packageParser.parse(function (packageDocument) {
+                        var openBookOptions = readiumOptions.openBookOptions || {};
+                        var openBookData = $.extend(packageDocument.getSharedJsPackageData(), openBookOptions);
+
+                        if (openPageRequest) {
+                            openBookData.openPageRequest = openPageRequest;
+                        }
+                        self.reader.openBook(openBookData);
+
+                        var wPagination = new PaginationWorker(openBookData, readerOptions);
+                        wPagination.createDefaultPagination();
+
+                        var options = {
+                            packageDocumentUrl: _currentPublicationFetcher.getPackageUrl(),
+                            metadata: packageDocument.getMetadata()
+                        };
+
+                        if (callback) {
+                            // gives caller access to document metadata like the table of contents
+                            callback(packageDocument, options);
+                        }
+                    });
                 });
-            });
+            };
+
+            this.closePackageDocument = function () {
+                if (_currentPublicationFetcher) {
+                    _currentPublicationFetcher.flushCache();
+                }
+            };
+
+            //we need global access to the reader object for automation test being able to call it's APIs
+            ReadiumSDK.reader = this.reader;
+
+            ReadiumSDK.trigger(ReadiumSDK.Events.READER_INITIALIZED, this.reader);
         };
 
-        this.closePackageDocument = function() {
-            if (_currentPublicationFetcher) {
-                _currentPublicationFetcher.flushCache();
-            }
-        };
+        Readium.version = JSON.parse(versionText);
 
+        return Readium;
 
-        //we need global access to the reader object for automation test being able to call it's APIs
-        ReadiumSDK.reader = this.reader;
-
-        ReadiumSDK.trigger(ReadiumSDK.Events.READER_INITIALIZED, this.reader);
-    };
-    
-    Readium.version = JSON.parse(versionText);
-
-    return Readium;
-
-});
+    });
