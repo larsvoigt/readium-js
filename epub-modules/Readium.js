@@ -72,6 +72,7 @@ define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 
 
                     var pagination = new ReadiumSDK.Models.Pagination();
                     pagination.storeDefaultPagination(openBookData, readerOptions);
+                    pagination = undefined;
 
                     var options = {
                         packageDocumentUrl : _currentPublicationFetcher.getPackageUrl(),
