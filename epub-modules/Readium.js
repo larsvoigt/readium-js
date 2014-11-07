@@ -41,7 +41,7 @@ define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 
                     function () {
                         return _currentPublicationFetcher;
                     },
-                    { mathJaxUrl: readerOptions.mathJaxUrl });
+                    {mathJaxUrl: readerOptions.mathJaxUrl});
             }
             else {
                 readerOptions.iframeLoader = new ReadiumSDK.Views.IFrameLoader();
@@ -75,9 +75,12 @@ define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 
                         }
                         self.reader.openBook(openBookData);
 
-                        var pagination = new ReadiumSDK.Models.Pagination(self.reader);
-                        pagination.storeDefaultPagination(openBookData, readerOptions);
-                        pagination = undefined;
+                        if (openBookData.rendition_layout == "") {
+
+                            var pagination = new ReadiumSDK.Models.Pagination(self.reader);
+                            pagination.storeDefaultPagination(openBookData, readerOptions);
+                            pagination = undefined;
+                        }
 
                         var options = {
                             packageDocumentUrl: _currentPublicationFetcher.getPackageUrl(),
