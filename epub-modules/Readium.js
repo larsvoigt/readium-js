@@ -15,65 +15,60 @@
 define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 'readerView', 'epub-fetch', 'epub-model/package_document_parser', 'epub-fetch/iframe_zip_loader', 'URIjs', 'pagination', 'cryptoJs'],
     function (require, versionText, console_shim, $, _, readerView, PublicationFetcher, PackageParser, IframeZipLoader, URI, Pagination, cryptoJs) {
 
-        //hack to make URI object global for readers consumption.
-        window.URI = URI;
+    //hack to make URI object global for readers consumption.
+    window.URI = URI;
 
-        //polyfill to support Safari 6
-        if ('URL' in window === false) {
-            if ('webkitURL' in window === false) {
-                throw Error('Browser does not support window.URL');
-            }
-
-            window.URL = window.webkitURL;
+    //polyfill to support Safari 6
+    if ('URL' in window === false) {
+        if ('webkitURL' in window === false) {
+            throw Error('Browser does not support window.URL');
         }
 
-        var Readium = function (readiumOptions, readerOptions) {
+        window.URL = window.webkitURL;
+    }
 
-            var self = this;
+    var Readium = function(readiumOptions, readerOptions){
 
-            var _currentPublicationFetcher;
+        var self = this;
 
-            var jsLibRoot = readiumOptions.jsLibRoot;
+        var _currentPublicationFetcher;
 
-            if (!readiumOptions.useSimpleLoader) {
-                readerOptions.iframeLoader = new IframeZipLoader(
-                    ReadiumSDK,
-                    function () {
-                        return _currentPublicationFetcher;
-                    },
-                    {mathJaxUrl: readerOptions.mathJaxUrl});
+        var jsLibRoot = readiumOptions.jsLibRoot;
+
+        if (!readiumOptions.useSimpleLoader){
+            readerOptions.iframeLoader = new IframeZipLoader(ReadiumSDK, function() { return _currentPublicationFetcher; }, { mathJaxUrl: readerOptions.mathJaxUrl });;
+        }
+        else{
+            readerOptions.iframeLoader = new ReadiumSDK.Views.IFrameLoader();
+        }
+        
+
+        this.reader = new ReadiumSDK.Views.ReaderView(readerOptions);
+
+        this.openPackageDocument = function(bookRoot, callback, openPageRequest)  {
+            if (_currentPublicationFetcher) {
+                _currentPublicationFetcher.flushCache();
             }
-            else {
-                readerOptions.iframeLoader = new ReadiumSDK.Views.IFrameLoader();
+
+            var cacheSizeEvictThreshold = null;
+            if (readiumOptions.cacheSizeEvictThreshold) {
+                cacheSizeEvictThreshold = readiumOptions.cacheSizeEvictThreshold;
             }
 
+            _currentPublicationFetcher = new PublicationFetcher(bookRoot, jsLibRoot, window, cacheSizeEvictThreshold);
 
-            this.reader = new ReadiumSDK.Views.ReaderView(readerOptions);
+            _currentPublicationFetcher.initialize(function() {
 
-            this.openPackageDocument = function (bookRoot, callback, openPageRequest) {
-                if (_currentPublicationFetcher) {
-                    _currentPublicationFetcher.flushCache();
-                }
+                var _packageParser = new PackageParser(bookRoot, _currentPublicationFetcher);
 
-                var cacheSizeEvictThreshold = null;
-                if (readiumOptions.cacheSizeEvictThreshold) {
-                    cacheSizeEvictThreshold = readiumOptions.cacheSizeEvictThreshold;
-                }
+                _packageParser.parse(function(packageDocument){
+                    var openBookOptions = readiumOptions.openBookOptions || {};
+                    var openBookData = $.extend(packageDocument.getSharedJsPackageData(), openBookOptions);
 
-                _currentPublicationFetcher = new PublicationFetcher(bookRoot, jsLibRoot, window, cacheSizeEvictThreshold);
-
-                _currentPublicationFetcher.initialize(function () {
-
-                    var _packageParser = new PackageParser(bookRoot, _currentPublicationFetcher);
-
-                    _packageParser.parse(function (packageDocument) {
-                        var openBookOptions = readiumOptions.openBookOptions || {};
-                        var openBookData = $.extend(packageDocument.getSharedJsPackageData(), openBookOptions);
-
-                        if (openPageRequest) {
-                            openBookData.openPageRequest = openPageRequest;
-                        }
-                        self.reader.openBook(openBookData);
+                    if (openPageRequest) {
+                        openBookData.openPageRequest = openPageRequest;
+                    }
+                    self.reader.openBook(openBookData);
 
                         if (openBookData.rendition_layout == "") {
 
@@ -82,34 +77,34 @@ define(['require', 'text!version.json', 'console_shim', 'jquery', 'underscore', 
                             pagination = undefined;
                         }
 
-                        var options = {
-                            packageDocumentUrl: _currentPublicationFetcher.getPackageUrl(),
-                            metadata: packageDocument.getMetadata()
-                        };
+                    var options = {
+                        packageDocumentUrl : _currentPublicationFetcher.getPackageUrl(),
+                        metadata: packageDocument.getMetadata()
+                    };
 
-                        if (callback) {
-                            // gives caller access to document metadata like the table of contents
-                            callback(packageDocument, options);
-                        }
-                    });
+                    if (callback){
+                        // gives caller access to document metadata like the table of contents
+                        callback(packageDocument, options);
+                    }
                 });
-            };
-
-            this.closePackageDocument = function () {
-                if (_currentPublicationFetcher) {
-                    _currentPublicationFetcher.flushCache();
-                }
-            };
-
-
-            //we need global access to the reader object for automation test being able to call it's APIs
-            ReadiumSDK.reader = this.reader;
-
-            ReadiumSDK.trigger(ReadiumSDK.Events.READER_INITIALIZED, this.reader);
+            });
         };
 
-        Readium.version = JSON.parse(versionText);
+        this.closePackageDocument = function() {
+            if (_currentPublicationFetcher) {
+                _currentPublicationFetcher.flushCache();
+            }
+        };
 
-        return Readium;
 
-    });
+        //we need global access to the reader object for automation test being able to call it's APIs
+        ReadiumSDK.reader = this.reader;
+
+        ReadiumSDK.trigger(ReadiumSDK.Events.READER_INITIALIZED, this.reader);
+    };
+    
+    Readium.version = JSON.parse(versionText);
+
+    return Readium;
+
+});
